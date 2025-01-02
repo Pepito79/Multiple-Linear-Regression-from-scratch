@@ -1,0 +1,43 @@
+How the code is structured:
+
+-We want to classify a certain data , for example let's take a dataset representing the last performance of Mbappe and we want to know if he gonna score at this match . If the response is yes the model need to give 1 as an output else he needs to output 0.
+
+-As every regression we begin by normalizing the data: 
+We have 2 possibility : 
+         - For every i : xi = (xi - Avg(feature))/ Standard Deviation
+         - x′i = (xi − min(xi))/(max(xi) − min(xi))
+-For this we use a vector that represents the weights of each feature. If the feature is "very positive" the associated weight is high else he is low .The weight wi represents how important that input feature
+is to the classification decision. For example if Mbappe scored more than 3 goals the two last matches we understand that this feature is important and we gonna give itan important weight.
+
+- We add to this the bias term wich is a sort of noise (error). o make a decision on a test instance we do the dot product of weights and data and add it the bias:  z = X * W + b 
+
+- The problem is that this quantity has not to be a probability so for that we have to find a function that converts this quantity into a probability , here is where the sigmoid function appears:     σ (z) = 1 / (1 + exp(-z))
+
+- In the future we say that the probability to have the data classified  as  1 is equal to :
+    P(y=1 | x) = σ (W.X + b)    --> P(y=0 | x)= 1 - P(y=1 |x)
+
+One terminological point. The input to the sigmoid function, the score z = w · x + b from (5.3), is often called the logit.
+
+- The main question that remains now is how can we classify the data ? 
+For a given x we say yes if P(y = 1|x) is more than 0.5, and no otherwise.
+
+Very easy or no? 
+
+Let's dive now into a more complex type of classifier:  The Multinomial logistic regression
+
+- Sometimes we need more than two classes. n multinomial logistic regression we want to label each observation with a
+class k from a set of K classes.
+
+-Let’s use the following representation: the output y for each input x will be a vector of length K. If class c is the correct class, we’ll set yc = 1, and set all the other elements of y to be 0, i.e., yc = 1 and y j = 0 ∀ j 6 = c. A vector like this y, with one value=1 and the rest 0, is called a one-hot vector.
+
+- Now that we have K classes we need a special weight vector for every class , that why we create a big matrix where the number of rows is the number of features and the number of columns is the number of class.
+
+- Then we apply the softmax function for the logits :  ŷ = softmax(Wx + b) where softmax do for every k : exp(zk)/sum(exp(z)). We finally obtains a vector with k terms where :   Class Predicted = Argmaxk(ŷ)
+
+How can we determine the weights and bias ? For this we will as simple as it is use the gradient descent . But we need a loss function (cost function) , thes best one here (in my opinion) is the cross entropy .
+            LCE(ŷ,y) = −sum( [y log(ŷ)+ (1 − y) log (1 − ŷ)])
+
+-We can finally apply the famous gradient descent algorithm to minimize the loss function .
+
+    
+
