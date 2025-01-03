@@ -1,86 +1,92 @@
 #!/home/pepito/Documents/ML/.venv/bin/python
-
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
 
-# Fonction sigmoïde
+# Sigmoid function
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
-# Fonction de coût avec epsilon
-def cost_function(W, X, b, y_true, epsilon=1e-10):
-    m = X.shape[0]
-    y_predicted = sigmoid(np.dot(X, W) + b)
-    lce = -(1 / m) * np.sum(y_true * np.log(y_predicted + epsilon) + (1 - y_true) * np.log(1 - y_predicted + epsilon))
-    return lce
+# Load dataset
+df = pd.read_csv('./Multi_Student.csv')
+df = df.loc[:, ['Hours Studied', 'Previous Scores', 'Performance Index']]
 
-# Calcul des gradients
-def gradient(W, X, b, y_true):
-    m = X.shape[0]
-    y_predicted = sigmoid(np.dot(X, W) + b)
-    dW = (1 / m) * np.dot(X.T, (y_predicted - y_true))
-    db = (1 / m) * np.sum(y_predicted - y_true)
-    return dW, db
+# Standardize the features
+scaler = StandardScaler()
+df[['Hours Studied', 'Previous Scores']] = scaler.fit_transform(df[['Hours Studied', 'Previous Scores']])
 
-# Descente de gradient
-def gradient_descent(W, X, b, y_true, L, epochs):
+# Convert the performance index to binary (1 if performance >= 50, else 0)
+df['Performance Index'] = df['Performance Index'].apply(lambda x: 1 if x >= 50.0 else 0)
+
+# Features and target
+X = df[['Hours Studied', 'Previous Scores']].values
+y = df['Performance Index'].values
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Sigmoid function (used in gradient descent)
+def sigmoid(z):
+    return 1/(1+np.exp(-z))
+
+# Loss function to calculate error
+def loss(X, W, b, y_true):
+    y_predicted = sigmoid(np.dot(X, W) + b)
+    eps = 10**(-9)
+    mat = y_true * np.log(y_predicted + eps) + (1 - y_true) * np.log(1 - y_predicted)
+    return (-1 / len(y_true) * sum(mat))
+
+# Gradient descent function to optimize weights and bias
+def gradient_descent(X, W, b, L, y_true, epochs):
+    n = len(y_true)
     for i in range(epochs):
-        dW, db = gradient(W, X, b, y_true)
-        W -= L * dW
+        y_predicted = sigmoid(np.dot(X, W) + b)
+        dw = (1 / n) * np.dot(X.T, (y_predicted - y_true))
+        db = (1 / n) * np.sum(y_predicted - y_true)
+        
+        W -= L * dw
         b -= L * db
 
-        # Affichage du coût à intervalles réguliers
         if i % 100 == 0:
-            cost = cost_function(W, X, b, y_true)
-            print(f"Iteration {i}, Cost: {cost:.6f}")
+            print(f"Epoch {i}, Loss: {loss(X, W, b, y_true)}")
+
     return W, b
 
-# Charger les données
-df = pd.read_csv('./Multi_Student.csv')
-
-# Transformation des données
-df_dummies = pd.get_dummies(df)
-
-# Définir les variables
-var1 = 'Hours Studied'
-var2 = 'Previous Scores'
-output = 'Performance Index'
-
-# Séparation des variables indépendantes (X) et dépendantes (y)
-X = df_dummies[[var1, var2]].astype(float)
-y = df_dummies[output].astype(float)
-
-# Normaliser X avec StandardScaler
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-# Diviser les données en ensembles d'entraînement et de test
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.3, random_state=42)
-
-# Assurez-vous que y est binaire
-y_train = (y_train >= 0.5).astype(int)
-y_test = (y_test >= 0.5).astype(int)
-
-# Initialisation des poids et du biais
-W = np.zeros((X_train.shape[1], 1))
+# Initialize weights and bias
+W = np.zeros(2)  # Size equal to the number of features (columns)
 b = 0
-y_train = y_train.values.reshape(-1, 1)  # Convertir en vecteur colonne
+L = 0.001  # Learning rate
+epochs = 9000
 
-# Entraîner le modèle avec la descente de gradient
-learning_rate = 0.01
-epochs = 5000
-W, b = gradient_descent(W, X_train, b, y_train, learning_rate, epochs)
+# Train the model using gradient descent
+W, b = gradient_descent(X_train, W, b, L, y_train, epochs)
 
-# Prédictions sur les données de test
-y_pred_prob = sigmoid(np.dot(X_test, W) + b)
-y_pred = (y_pred_prob >= 50).astype(int)
+# Print learned weights and bias
+print("Learned Weights:", W)
+print("Learned Bias:", b)
 
-# Évaluer les performances
-accuracy = accuracy_score(y_test, y_pred)
-print(f"\nPrécision : {accuracy:.4f}")
-print(y_test)
+# Make predictions on the test set
+y_predicted = sigmoid(np.dot(X_test, W) + b)
+y_predicted = pd.DataFrame(y_predicted)
 
+# Convert probabilities to binary class predictions (0 or 1)
+y_pred_classes = (y_predicted >= 0.5).astype(int)
+
+# Calculate accuracy of the model
+accuracy = accuracy_score(y_test, y_pred_classes)
+print("Accuracy:", accuracy)
+
+# Generate confusion matrix
+cm = confusion_matrix(y_test, y_pred_classes)
+
+# Visualize the confusion matrix using a heatmap
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=[0, 1], yticklabels=[0, 1])
+plt.xlabel('Predictions')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.show()
